@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Rating System</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            margin: 50px;
+            background-color: #f8f9fa;
+        }
+
+        .rating {
+            display: flex;
+            justify-content: center;
+            direction: rtl;
+        }
+
+        .rating input {
+            display: none;
+        }
+
+        .rating label {
+            font-size: 45px;
+            cursor: pointer;
+            color: #ddd;
+            transition: color 0.3s ease-in-out;
+        }
+
+        .rating input:checked~label,
+        .rating label:hover,
+        .rating label:hover~label {
+            color: #f1c40f;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Modern Modal Styling */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 320px;
+            opacity: 0;
+            transform: translate(-50%, -55%);
+            transition: all 0.3s ease-out;
+        }
+
+        .modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+
+        .modal .emoji {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+
+        .modal .message {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .modal button {
+            background-color: #28a745;
+            font-size: 16px;
+            padding: 10px 20px;
+            border-radius: 6px;
+        }
+
+        .modal button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Rate this product</h2>
+    <h3>Rating: <span id="avgRating">Loading...</span> ⭐</h3>
+
+
+    <form id="ratingForm">
+        <div class="rating">
+            <input type="radio" name="rating" id="star5" value="5"><label for="star5">&#9733;</label>
+            <input type="radio" name="rating" id="star4" value="4"><label for="star4">&#9733;</label>
+            <input type="radio" name="rating" id="star3" value="3"><label for="star3">&#9733;</label>
+            <input type="radio" name="rating" id="star2" value="2"><label for="star2">&#9733;</label>
+            <input type="radio" name="rating" id="star1" value="1"><label for="star1">&#9733;</label>
+        </div>
+        <button type="submit">Submit Rating</button>
+    </form>
+
+    <!-- Modern Styled Modal -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal" id="ratingModal">
+        <div class="emoji" id="modalEmoji">🌟</div>
+        <p class="message" id="modalMessage"></p>
+        <button onclick="closeModal()">OK</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const ratingForm = document.getElementById('ratingForm');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const ratingModal = document.getElementById('ratingModal');
+            const modalEmoji = document.getElementById('modalEmoji');
+            const modalMessage = document.getElementById('modalMessage');
+
+            ratingForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const rating = document.querySelector('input[name="rating"]:checked');
+
+                if (rating) {
+                    submitRating(rating.value);
+                } else {
+                    showModal("⚠️", "Please select a rating!");
+                }
+            });
+
+            function submitRating(ratingValue) {
+                fetch('submit_rating.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `rating=${ratingValue}`
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showModal("🎉", "Thanks for your feedback!");
+                            fetchAverageRating(); // Update average rating
+                        } else {
+                            showModal("⚠️", data.message);
+                        }
+                    })
+                    .catch(error => showModal("❌", "Something went wrong!"));
+            }
+
+            // Example of using switch case for rating messages (optional)
+            function getRatingMessage(ratingValue) {
+                let emoji = "🌟";
+                let message = `You rated this ${ratingValue} stars!`;
+
+                switch (ratingValue) {
+                    case "5":
+                        emoji = "🎉";
+                        message = "Amazing! Thanks for 5 stars!";
+                        break;
+                    case "4":
+                        emoji = "😊";
+                        message = "Great! Thanks for 4 stars!";
+                        break;
+                    case "3":
+                        emoji = "😐";
+                        message = "Thanks! We'll try to improve.";
+                        break;
+                    case "2":
+                        emoji = "😕";
+                        message = "Oh! What could we do better?";
+                        break;
+                    case "1":
+                        emoji = "😢";
+                        message = "We're sorry! How can we improve?";
+                        break;
+                }
+                return { emoji, message };
+            }
+
+            // Example of how to use getRatingMessage inside submitRating, if you dont want to use the generic thank you message.
+
+            function submitRating(ratingValue) {
+                fetch('submit_rating.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `rating=${ratingValue}`
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const { emoji, message } = getRatingMessage(ratingValue);
+                            showModal(emoji, message);
+                            fetchAverageRating(); // Update average rating
+                        } else {
+                            showModal("⚠️", data.message);
+                        }
+                    })
+                    .catch(error => showModal("❌", "Something went wrong!"));
+            }
+
+
+            function fetchAverageRating() {
+                fetch('get_average_rating.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('avgRating').innerText = data.average_rating;
+                        } else {
+                            document.getElementById('avgRating').innerText = "N/A";
+                        }
+                    })
+                    .catch(error => console.log("Error in fetching rating"));
+            }
+
+            // Fetch the rating when the page loads
+            fetchAverageRating();
+
+
+        });
+
+        function showModal(emoji, message) {
+            document.getElementById('modalEmoji').innerText = emoji;
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('modalOverlay').style.display = 'block';
+            const modal = document.getElementById('ratingModal');
+            modal.style.display = 'block';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('ratingModal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.getElementById('modalOverlay').style.display = 'none';
+            }, 300);
+        }
+
+    </script>
+
+</body>
+
+</html>
+
+<?php
+
+?>
